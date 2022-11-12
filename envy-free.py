@@ -16,7 +16,7 @@ class RentDivisionInstance:
 
 
 class RentDivisionAllocation:
-    def __init__(self, assignment: list[int], prices: list[float], valuations = None):
+    def __init__(self, assignment: list[int], prices: list[float], valuations=None):
         self.num_agents = len(assignment)
         self.num_rooms = len(assignment)
         # assignment[i] -> room that agent i receives
@@ -28,12 +28,14 @@ class RentDivisionAllocation:
     def __str__(self):
         out = str(self.assignment) + "\n" + str(self.prices)
         return out
-    
+
     def get_utilities(self):
         assert self.valuations is not None
-        utilities = [[(val[i] - self.prices[i]) for i in range(len(val))] for val in self.valuations]
+        utilities = [
+            [(val[i] - self.prices[i]) for i in range(len(val))]
+            for val in self.valuations
+        ]
         return utilities
-
 
 
 def WelfareMaximizingAssignment(instance: RentDivisionInstance) -> list[int]:
@@ -77,7 +79,9 @@ class EnvyFree(RentDivisionAlgorithm):
         )
         solution = model.solve()
         prices = [solution[p[i]] for i in range(instance.num_rooms)]
-        allocation = RentDivisionAllocation(assignment=assignment, prices=prices, valuations=instance.valuations)
+        allocation = RentDivisionAllocation(
+            assignment=assignment, prices=prices, valuations=instance.valuations
+        )
         return allocation
 
 
@@ -86,6 +90,8 @@ class Maximin(RentDivisionAlgorithm):
     def solve(instance: RentDivisionInstance) -> RentDivisionAllocation:
         model = Model(name="envy-free-rent-division")
         p = model.continuous_var_list(keys=instance.num_agents, lb=0, name="p")
+
+        # R represents the minimum utility
         R = model.continuous_var(name="R")
 
         # a welfare maximizing assignment
@@ -104,7 +110,7 @@ class Maximin(RentDivisionAlgorithm):
             model.add_constraint(
                 R <= instance.valuations[i][assignment[i]] - p[assignment[i]]
             )
-        
+
         # sum of prices are fixed
         model.add_constraint(
             sum(p[i] for i in range(instance.num_agents)) == instance.price
@@ -113,7 +119,53 @@ class Maximin(RentDivisionAlgorithm):
         model.set_objective("max", R)
         solution = model.solve()
         prices = [solution[p[i]] for i in range(instance.num_rooms)]
-        allocation = RentDivisionAllocation(assignment=assignment, prices=prices, valuations=instance.valuations)
+        allocation = RentDivisionAllocation(
+            assignment=assignment, prices=prices, valuations=instance.valuations
+        )
+        return allocation
+
+
+class Maxislack(RentDivisionAlgorithm):
+    @staticmethod
+    def solve(instance: RentDivisionInstance) -> RentDivisionAllocation:
+        model = Model(name="envy-free-rent-division")
+        p = model.continuous_var_list(keys=instance.num_agents, lb=0, name="p")
+
+        # S represents the minimum slack
+        S = model.continuous_var(name="S")
+
+        # a welfare maximizing assignment
+        assignment = WelfareMaximizingAssignment(instance)
+
+        # envy-freeness constraints
+        for i in range(instance.num_agents):
+            for j in range(instance.num_agents):
+                model.add_constraint(
+                    instance.valuations[i][assignment[i]] - p[assignment[i]]
+                    >= instance.valuations[i][j] - p[j]
+                )
+
+        # maxislack constraint
+        for i in range(instance.num_agents):
+            for j in range(instance.num_agents):
+                if j != assignment[i]:
+                    model.add_constraint(
+                        S
+                        <= (instance.valuations[i][assignment[i]] - p[assignment[i]])
+                        - (instance.valuations[i][j] - p[j])
+                    )
+
+        # sum of prices are fixed
+        model.add_constraint(
+            sum(p[i] for i in range(instance.num_agents)) == instance.price
+        )
+        # maximize S (i.e maximize the minimum slack)
+        model.set_objective("max", S)
+        solution = model.solve()
+        prices = [solution[p[i]] for i in range(instance.num_rooms)]
+        allocation = RentDivisionAllocation(
+            assignment=assignment, prices=prices, valuations=instance.valuations
+        )
         return allocation
 
 
@@ -121,10 +173,9 @@ def main():
     valuations = [[4.0, 1.0, 3.0], [2.0, 0.0, 6.0], [3.0, 3.0, 2.0]]
     price = 8.0
     instance = RentDivisionInstance(valuations=valuations, price=price)
-    allocation = Maximin.solve(instance=instance)
+    allocation = Maxislack.solve(instance=instance)
     print(allocation)
     print(allocation.get_utilities())
-
 
 
 main()
