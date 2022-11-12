@@ -1,3 +1,4 @@
+import math
 from scipy.optimize import linear_sum_assignment
 import numpy as np
 from docplex.mp.model import Model
@@ -15,7 +16,7 @@ class RentDivisionInstance:
         self.price = price
         for val in valuations:
             assert self.num_agents == len(val)
-            assert sum(val) == price
+            assert math.isclose(sum(val), price)
 
 
 class RentDivisionAllocation:
@@ -296,12 +297,24 @@ class Lexislack(RentDivisionAlgorithm):
         )
         return allocation
 
+def generate_random_valuations(n, price):
+    valuations = [[np.random.random() for i in range(n)] for j in range(n)]
+    for val in valuations:
+        sum_val = sum(val)
+        for i in range(n):
+            val[i] = val[i]*price/sum_val
+        print(sum(val))
+    return valuations
 
 def main():
-    valuations = [[4.0, 1.0, 3.0], [2.0, 0.0, 6.0], [3.0, 3.0, 2.0]]
-    price = 8.0
+    # valuations = [[4.0, 1.0, 3.0], [2.0, 0.0, 6.0], [3.0, 3.0, 2.0]]
+    # price = 8.0
+    price = 10
+    valuations = generate_random_valuations(4, price)
+    print(valuations)
+
     instance = RentDivisionInstance(valuations=valuations, price=price)
-    allocation = Lexislack.solve(instance=instance)
+    allocation = Maximin.solve(instance=instance)
     print(allocation)
     print(allocation.get_utilities())
 
