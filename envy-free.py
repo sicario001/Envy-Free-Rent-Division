@@ -1,7 +1,9 @@
 from scipy.optimize import linear_sum_assignment
 import numpy as np
 from docplex.mp.model import Model
+import sys
 
+epsilon = sys.float_info.epsilon
 
 class RentDivisionInstance:
     def __init__(self, valuations: list[list[float]], price: float):
@@ -61,7 +63,7 @@ class EnvyFree(RentDivisionAlgorithm):
     @staticmethod
     def solve(instance: RentDivisionInstance) -> RentDivisionAllocation:
         model = Model(name="envy-free-rent-division")
-        p = model.continuous_var_list(keys=instance.num_agents, lb=0, name="p")
+        p = model.continuous_var_list(keys=instance.num_agents, lb=0.0, name="p")
 
         # a welfare maximizing assignment
         assignment = WelfareMaximizingAssignment(instance)
@@ -88,8 +90,8 @@ class EnvyFree(RentDivisionAlgorithm):
 class Maximin(RentDivisionAlgorithm):
     @staticmethod
     def solve(instance: RentDivisionInstance) -> RentDivisionAllocation:
-        model = Model(name="envy-free-rent-division")
-        p = model.continuous_var_list(keys=instance.num_agents, lb=0, name="p")
+        model = Model(name="Maximin-rent-division")
+        p = model.continuous_var_list(keys=instance.num_agents, lb=0.0, name="p")
 
         # R represents the minimum utility
         R = model.continuous_var(name="R")
@@ -128,22 +130,14 @@ class Maximin(RentDivisionAlgorithm):
 class Maxislack(RentDivisionAlgorithm):
     @staticmethod
     def solve(instance: RentDivisionInstance) -> RentDivisionAllocation:
-        model = Model(name="envy-free-rent-division")
-        p = model.continuous_var_list(keys=instance.num_agents, lb=0, name="p")
+        model = Model(name="Maxislack-rent-division")
+        p = model.continuous_var_list(keys=instance.num_agents, lb=0.0, name="p")
 
         # S represents the minimum slack
         S = model.continuous_var(name="S")
 
         # a welfare maximizing assignment
         assignment = WelfareMaximizingAssignment(instance)
-
-        # envy-freeness constraints
-        for i in range(instance.num_agents):
-            for j in range(instance.num_agents):
-                model.add_constraint(
-                    instance.valuations[i][assignment[i]] - p[assignment[i]]
-                    >= instance.valuations[i][j] - p[j]
-                )
 
         # maxislack constraint
         for i in range(instance.num_agents):
@@ -169,13 +163,147 @@ class Maxislack(RentDivisionAlgorithm):
         return allocation
 
 
+class Lexislack(RentDivisionAlgorithm):
+    @staticmethod
+    def get_L(fixed_deltas, non_fixed_deltas, instance, assignment):
+        model = Model()
+        p = model.continuous_var_list(keys=instance.num_agents, lb=0.0, name="p")
+
+        # S represents the minimum slack over non_fixed_deltas
+        S = model.continuous_var(name="S")
+
+        # constraints for maximizing minimum of non_fixed_deltas
+        for i, j in non_fixed_deltas:
+            model.add_constraint(
+                S
+                <= (instance.valuations[i][assignment[i]] - p[assignment[i]])
+                - (instance.valuations[i][j] - p[j])
+            )
+
+        # constraints for fixed_deltas
+        for i, j in fixed_deltas.keys():
+            model.add_constraint(
+                (instance.valuations[i][assignment[i]] - p[assignment[i]])
+                - (instance.valuations[i][j] - p[j])
+                == fixed_deltas[(i, j)]
+            )
+
+        # sum of prices are fixed
+        model.add_constraint(
+            sum(p[i] for i in range(instance.num_agents)) == instance.price
+        )
+
+        # maximize S (i.e maximize the minimum slack over non_fixed_deltas)
+        model.set_objective("max", S)
+
+        solution = model.solve()
+
+        assert solution is not None
+
+        L = solution[S]
+
+        return L
+
+    @staticmethod
+    def get_solution(fixed_deltas, instance, assignment):
+        model = Model()
+        p = model.continuous_var_list(keys=instance.num_agents, lb=0.0, name="p")
+
+        # constraints for fixed_deltas
+        for i, j in fixed_deltas.keys():
+            model.add_constraint(
+                (instance.valuations[i][assignment[i]] - p[assignment[i]])
+                - (instance.valuations[i][j] - p[j])
+                == fixed_deltas[(i, j)]
+            )
+
+        # sum of prices are fixed
+        model.add_constraint(
+            sum(p[i] for i in range(instance.num_agents)) == instance.price
+        )
+
+        solution = Lexislack.get_solution(fixed_deltas, instance, assignment)
+        prices = [solution[p[i]] for i in range(instance.num_rooms)]
+
+        return prices
+
+    @staticmethod
+    def check_valid(L, i1, j1, fixed_deltas, non_fixed_deltas, instance, assignment):
+        """Check if delta_i1_j1 can be larger than L for a lexislack allocation"""
+
+        model = Model()
+        p = model.continuous_var_list(keys=instance.num_agents, lb=0.0, name="p")
+
+        # constraints for fixed_deltas
+        for i, j in fixed_deltas.keys():
+            model.add_constraint(
+                (instance.valuations[i][assignment[i]] - p[assignment[i]])
+                - (instance.valuations[i][j] - p[j])
+                == fixed_deltas[(i, j)]
+            )
+
+        # constraints for non_fixed_deltas
+        for i, j in non_fixed_deltas:
+            if (i, j) != (i1, j1):
+                model.add_constraint(
+                    (instance.valuations[i][assignment[i]] - p[assignment[i]])
+                    - (instance.valuations[i][j] - p[j])
+                    >= L
+                )
+            else:
+                model.add_constraint(
+                    (instance.valuations[i1][assignment[i1]] - p[assignment[i1]])
+                    - (instance.valuations[i1][j1] - p[j1])
+                    >= L + epsilon
+                )
+
+        # sum of prices are fixed
+        model.add_constraint(
+            sum(p[i] for i in range(instance.num_agents)) == instance.price
+        )
+
+        return model.solve() is not None
+
+    @staticmethod
+    def solve(instance: RentDivisionInstance) -> RentDivisionAllocation:
+        # a welfare maximizing assignment
+        assignment = WelfareMaximizingAssignment(instance)
+
+        fixed_deltas = {}
+        non_fixed_deltas = set()
+        for i in range(instance.num_agents):
+            for j in range(instance.num_agents):
+                if j != assignment[i]:
+                    non_fixed_deltas.add((i, j))
+
+        while len(non_fixed_deltas) > 0:
+            L = Lexislack.get_L(fixed_deltas, non_fixed_deltas, instance, assignment)
+
+            flag = False
+            for i1, j1 in non_fixed_deltas:
+                # Check if delta_i1_j1 can be larger than L for a lexislack allocation
+                if not Lexislack.check_valid(
+                    L, i1, j1, fixed_deltas, non_fixed_deltas, instance, assignment
+                ):
+                    flag = True
+                    fixed_deltas[(i1, j1)] = L
+                    non_fixed_deltas.remove((i1, j1))
+                    break
+
+            assert flag
+        prices = Lexislack.get_solution(fixed_deltas, instance, assignment)
+        allocation = RentDivisionAllocation(
+            assignment=assignment, prices=prices, valuations=instance.valuations
+        )
+        return allocation
+
+
 def main():
     valuations = [[4.0, 1.0, 3.0], [2.0, 0.0, 6.0], [3.0, 3.0, 2.0]]
     price = 8.0
     instance = RentDivisionInstance(valuations=valuations, price=price)
-    allocation = Maxislack.solve(instance=instance)
+    allocation = Lexislack.solve(instance=instance)
     print(allocation)
     print(allocation.get_utilities())
-
 
 main()
