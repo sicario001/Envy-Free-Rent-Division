@@ -3,7 +3,8 @@ import numpy as np
 from docplex.mp.model import Model
 import sys
 
-epsilon = sys.float_info.epsilon
+# epsilon = sys.float_info.epsilon
+epsilon = 0.00001
 
 class RentDivisionInstance:
     def __init__(self, valuations: list[list[float]], price: float):
@@ -222,7 +223,7 @@ class Lexislack(RentDivisionAlgorithm):
             sum(p[i] for i in range(instance.num_agents)) == instance.price
         )
 
-        solution = Lexislack.get_solution(fixed_deltas, instance, assignment)
+        solution = model.solve()
         prices = [solution[p[i]] for i in range(instance.num_rooms)]
 
         return prices
@@ -254,7 +255,7 @@ class Lexislack(RentDivisionAlgorithm):
                 model.add_constraint(
                     (instance.valuations[i1][assignment[i1]] - p[assignment[i1]])
                     - (instance.valuations[i1][j1] - p[j1])
-                    >= L + epsilon
+                    >= L + epsilon 
                 )
 
         # sum of prices are fixed
@@ -278,7 +279,6 @@ class Lexislack(RentDivisionAlgorithm):
 
         while len(non_fixed_deltas) > 0:
             L = Lexislack.get_L(fixed_deltas, non_fixed_deltas, instance, assignment)
-
             flag = False
             for i1, j1 in non_fixed_deltas:
                 # Check if delta_i1_j1 can be larger than L for a lexislack allocation
@@ -289,7 +289,6 @@ class Lexislack(RentDivisionAlgorithm):
                     fixed_deltas[(i1, j1)] = L
                     non_fixed_deltas.remove((i1, j1))
                     break
-
             assert flag
         prices = Lexislack.get_solution(fixed_deltas, instance, assignment)
         allocation = RentDivisionAllocation(
