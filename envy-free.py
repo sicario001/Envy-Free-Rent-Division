@@ -34,7 +34,7 @@ class RentDivisionAllocation:
         # assignment = [chr(ord('A') + i) for i in self.assignment]
         out = ""
         for i in range(len(self.assignment)):
-            out += "Agent " + str(i+1) + " -> Room " + chr(ord('A') + i) + " at price " + str(self.prices[i]) + "\n"
+            out += "Agent " + str(i+1) + " -> Room " + chr(ord('A') + self.assignment[i]) + " at price " + str(self.prices[self.assignment[i]]) + "\n"
         # out = str(self.assignment) + "\n" + str(self.prices)
         return out
 
@@ -45,6 +45,14 @@ class RentDivisionAllocation:
             for val in self.valuations
         ]
         return utilities
+
+    def get_realised_utilities(self):
+        assert self.valuations is not None
+        utilities = self.get_utilities()
+        realised_utilities = [
+            utilities[i][self.assignment[i]] for i in range(self.num_agents)
+        ]
+        return realised_utilities
 
 
 def WelfareMaximizingAssignment(instance: RentDivisionInstance) -> list[int]:
@@ -315,16 +323,23 @@ def main():
     # valuations = [[4.0, 1.0, 3.0], [2.0, 0.0, 6.0], [3.0, 3.0, 2.0]]
     # price = 8.0
     # price = 10
-    # valuations = generate_random_valuations(4, price)
-    # print(valuations)
+    valuations = generate_random_valuations(4, price)
+    print(valuations)
 
-    # instance = RentDivisionInstance(valuations=valuations, price=price)
-    # allocation = Maximin.solve(instance=instance)
-    # print(allocation)
-    # print(allocation.get_utilities())
+    instance = RentDivisionInstance(valuations=valuations, price=price)
+    allocation = Maximin.solve(instance=instance)
+    
+    print(allocation)
+    print(allocation.get_utilities())
+    maximin_utils = allocation.get_realised_utilities()
+    print(maximin_utils)
 
-    # prakhar, sayam
-    valuations = [[4000,6000],[7500,2500]]
+
+
+    # hostel: vivek,kushal,aabid,
+    agents = ["vivek", "kushal", "aabid"]
+    print("agents are: ",agents)
+    valuations = [[4000, 3200, 2800],[4000,4000,2000],[5000,3500,1500]]
     print("the valuations are:")
     for i in range(len(valuations)):
         print("Agent "+str(i+1)+": "+str(valuations[i]))
@@ -334,24 +349,30 @@ def main():
 
     # Envy-free allocation
     allocation = EnvyFree.solve(instance=instance)
-    print("Envy-free allocation :")
+    # print("Envy-free allocation :")
+    print("Allocation 1:")
     print(allocation)
     # print(allocation.get_utilities())
 
     allocation = Maximin.solve(instance=instance)
-    print("Maximin allocation :")
+    # print("Maximin allocation :")
+    print("Allocation 2:")
     print(allocation)
     # print(allocation.get_utilities())
 
-    allocation = Maxislack.solve(instance=instance)
-    print("Maxislack allocation :")
-    print(allocation)
+    # allocation = Maxislack.solve(instance=instance)
+    # # print("Maxislack allocation :")
+    # print("Allocation 3:")
+    # print(allocation)
     # print(allocation.get_utilities())
 
     allocation = Lexislack.solve(instance=instance)
-    print("Lexislack allocation :")
+    # print("Lexislack allocation :")
+    print("Allocation 3:")
     print(allocation)
     # print(allocation.get_utilities())
+
+
 
 
 
