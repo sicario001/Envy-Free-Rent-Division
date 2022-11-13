@@ -310,6 +310,45 @@ class Lexislack(RentDivisionAlgorithm):
         )
         return allocation
 
+class Minimax(RentDivisionAlgorithm):
+    @staticmethod
+    def solve(instance: RentDivisionInstance) -> RentDivisionAllocation:
+        model = Model(name="Minimax-rent-division")
+        p = model.continuous_var_list(keys=instance.num_agents, lb=0.0, name="p")
+
+        # R represents the maximum utility
+        R = model.continuous_var(name="R")
+
+        # a welfare maximizing assignment
+        assignment = WelfareMaximizingAssignment(instance)
+
+        # envy-freeness constraints
+        for i in range(instance.num_agents):
+            for j in range(instance.num_agents):
+                model.add_constraint(
+                    instance.valuations[i][assignment[i]] - p[assignment[i]]
+                    >= instance.valuations[i][j] - p[j]
+                )
+
+        # minimax constraint
+        for i in range(instance.num_agents):
+            model.add_constraint(
+                R >= instance.valuations[i][assignment[i]] - p[assignment[i]]
+            )
+
+        # sum of prices are fixed
+        model.add_constraint(
+            sum(p[i] for i in range(instance.num_agents)) == instance.price
+        )
+        # minimize R (i.e minimize the maximum utility)
+        model.set_objective("min", R)
+        solution = model.solve()
+        prices = [solution[p[i]] for i in range(instance.num_rooms)]
+        allocation = RentDivisionAllocation(
+            assignment=assignment, prices=prices, valuations=instance.valuations
+        )
+        return allocation
+
 def generate_random_valuations(n, price):
     valuations = [[np.random.random() for i in range(n)] for j in range(n)]
     for val in valuations:
