@@ -30,7 +30,12 @@ class RentDivisionAllocation:
         self.valuations = valuations
 
     def __str__(self):
-        out = str(self.assignment) + "\n" + str(self.prices)
+        # convert room assignment to upper case letters
+        # assignment = [chr(ord('A') + i) for i in self.assignment]
+        out = ""
+        for i in range(len(self.assignment)):
+            out += "Agent " + str(i+1) + " -> Room " + chr(ord('A') + i) + " at price " + str(self.prices[i]) + "\n"
+        # out = str(self.assignment) + "\n" + str(self.prices)
         return out
 
     def get_utilities(self):
@@ -309,13 +314,45 @@ def generate_random_valuations(n, price):
 def main():
     # valuations = [[4.0, 1.0, 3.0], [2.0, 0.0, 6.0], [3.0, 3.0, 2.0]]
     # price = 8.0
-    price = 10
-    valuations = generate_random_valuations(4, price)
-    print(valuations)
+    # price = 10
+    # valuations = generate_random_valuations(4, price)
+    # print(valuations)
 
+    # instance = RentDivisionInstance(valuations=valuations, price=price)
+    # allocation = Maximin.solve(instance=instance)
+    # print(allocation)
+    # print(allocation.get_utilities())
+
+    # prakhar, sayam
+    valuations = [[4000,6000],[7500,2500]]
+    print("the valuations are:")
+    for i in range(len(valuations)):
+        print("Agent "+str(i+1)+": "+str(valuations[i]))
+    
+    price = 10000
     instance = RentDivisionInstance(valuations=valuations, price=price)
-    allocation = Maximin.solve(instance=instance)
+
+    # Envy-free allocation
+    allocation = EnvyFree.solve(instance=instance)
+    print("Envy-free allocation :")
     print(allocation)
-    print(allocation.get_utilities())
+    # print(allocation.get_utilities())
+
+    allocation = Maximin.solve(instance=instance)
+    print("Maximin allocation :")
+    print(allocation)
+    # print(allocation.get_utilities())
+
+    allocation = Maxislack.solve(instance=instance)
+    print("Maxislack allocation :")
+    print(allocation)
+    # print(allocation.get_utilities())
+
+    allocation = Lexislack.solve(instance=instance)
+    print("Lexislack allocation :")
+    print(allocation)
+    # print(allocation.get_utilities())
+
+
 
 main()
