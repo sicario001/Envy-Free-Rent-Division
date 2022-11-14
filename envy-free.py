@@ -354,7 +354,7 @@ class Minimax(RentDivisionAlgorithm):
         return allocation
 
 def generate_random_valuations(n, price):
-    valuations = [[round(np.random.random(), 5) for i in range(n)] for j in range(n)]
+    valuations = [[round(np.random.random(), 2) for i in range(n)] for j in range(n)]
     for val in valuations:
         sum_val = sum(val)
         for i in range(n):
@@ -363,6 +363,7 @@ def generate_random_valuations(n, price):
     return valuations
 
 def main():
+
     valuations = [[4.0, 1.0, 3.0], [2.0, 0.0, 6.0], [3.0, 3.0, 2.0]]
     price = 8.0
     
@@ -398,7 +399,6 @@ def main():
     # print("Allocation 3:")
     print(allocation)
     # print(allocation.get_utilities())
-
 
 
 main()
