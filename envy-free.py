@@ -372,7 +372,7 @@ def main():
 
     num_eq = 0
     for i in range(1000):
-        valuations = generate_random_valuations(20, price)
+        valuations = generate_random_valuations(4, price)
         # print(valuations)
 
         instance = RentDivisionInstance(valuations=valuations, price=price)
@@ -407,17 +407,21 @@ def main():
     print("Num equal: ", num_eq)
     print("plotting")
     # plot the distribution of maximin utilities and minimax utilities as line
-    counts1, bins1 = np.histogram(maximin_dist, bins=10)
+    counts1, bins1 = np.histogram(maximin_dist, bins=2)
     plt.hist(bins1[:-1], bins1, weights=counts1/np.sum(counts1), label='maximin', histtype='bar')
     plt.legend(loc='upper right')
+    plt.ylabel('Fraction of agents')
+    plt.xlabel('Utility (scaled between min and max utility)')
     plt.savefig("maximin.png")
     # plt.hist(maximin_dist, bins=2, alpha=0.5,label='maximin')
     # plt.legend(loc='upper right')
     # plt.savefig("maximin.png")
     plt.clf()
-    counts2, bins2 = np.histogram(minimax_dist, bins=10)
+    counts2, bins2 = np.histogram(minimax_dist, bins=2)
     plt.hist(bins2[:-1], bins2, weights=counts2/np.sum(counts2), label='minimax', histtype='bar')
     plt.legend(loc='upper right')
+    plt.ylabel('Fraction of agents')
+    plt.xlabel('Utility (scaled between min and max utility)')
     plt.savefig("minimax.png")
     # plt.hist(minimax_dist, bins=2, alpha=0.5, label='minimax')
     # plt.legend(loc='upper right')
