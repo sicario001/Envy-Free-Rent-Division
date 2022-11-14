@@ -3,7 +3,7 @@ from scipy.optimize import linear_sum_assignment
 import numpy as np
 from docplex.mp.model import Model
 import sys
-
+import matplotlib.pyplot as plt
 # epsilon = sys.float_info.epsilon
 epsilon = 0.00001
 
@@ -135,6 +135,10 @@ class Maximin(RentDivisionAlgorithm):
         # maximize R (i.e maximize the minimum utility)
         model.set_objective("max", R)
         solution = model.solve()
+        if solution is None:
+            print([sum(val) for val in instance.valuations])
+        assert solution is not None
+
         prices = [solution[p[i]] for i in range(instance.num_rooms)]
         allocation = RentDivisionAllocation(
             assignment=assignment, prices=prices, valuations=instance.valuations
@@ -350,35 +354,68 @@ class Minimax(RentDivisionAlgorithm):
         return allocation
 
 def generate_random_valuations(n, price):
-    valuations = [[np.random.random() for i in range(n)] for j in range(n)]
+    valuations = [[round(np.random.random(), 5) for i in range(n)] for j in range(n)]
     for val in valuations:
         sum_val = sum(val)
         for i in range(n):
             val[i] = val[i]*price/sum_val
-        print(sum(val))
+        # print(sum(val))
     return valuations
 
 def main():
     # valuations = [[4.0, 1.0, 3.0], [2.0, 0.0, 6.0], [3.0, 3.0, 2.0]]
     # price = 8.0
-    # price = 10
-    valuations = generate_random_valuations(4, price)
-    print(valuations)
+    # price = 100
+    # # distribution of maximin utilities and minimax utilities
+    # maximin_dist = []
+    # minimax_dist = []
+    # for i in range(1000):
+    #     valuations = generate_random_valuations(4, price)
+    #     # print(valuations)
 
-    instance = RentDivisionInstance(valuations=valuations, price=price)
-    allocation = Maximin.solve(instance=instance)
-    
-    print(allocation)
-    print(allocation.get_utilities())
-    maximin_utils = allocation.get_realised_utilities()
-    print(maximin_utils)
+    #     instance = RentDivisionInstance(valuations=valuations, price=price)
+    #     allocation = Maximin.solve(instance=instance)
+        
+    #     # print(allocation)
+    #     # print(allocation.get_utilities())
+    #     maximin_utils = allocation.get_realised_utilities()
+    #     if(np.max(maximin_utils)  == np.min(maximin_utils)):
+    #         print("maximin utils are equal")
+    #         continue
+    #     # scale to [0,1] by subtracting the minimum and dividing by the range
+    #     maximin_utils_normalised = list((np.array(maximin_utils) - np.min(maximin_utils)) / (np.max(maximin_utils) - np.min(maximin_utils)))
+    #     # print(maximin_utils)
+    #     # print("maximin dist", maximin_dist)
+    #     # print("maximin utils normalised", maximin_utils_normalised)        
 
+    #     allocation = Minimax.solve(instance=instance)
+    #     # print(allocation)
+    #     # print(allocation.get_utilities())
+    #     minimax_utils = allocation.get_realised_utilities()
+    #     if(np.max(minimax_utils)  == np.min(minimax_utils)):
+    #         print("minimax utils are equal")
+    #         continue
+    #     # scale to [0,1] by subtracting the minimum and dividing by the range
+    #     minimax_utils_normalised = list((np.array(minimax_utils) - np.min(minimax_utils)) / (np.max(minimax_utils) - np.min(minimax_utils)))
+    #     # print(minimax_utils)
 
-
+    #     # store maximin and minimax utilities to distribution
+    #     maximin_dist += maximin_utils_normalised
+    #     minimax_dist += minimax_utils_normalised
+    # print("plotting")
+    # # plot the distribution of maximin utilities and minimax utilities as line
+    # plt.hist(maximin_dist, bins=2, alpha=0.5,label='maximin')
+    # plt.legend(loc='upper right')
+    # plt.savefig("maximin.png")
+    # plt.hist(minimax_dist, bins=2, alpha=0.5, label='minimax')
+    # plt.legend(loc='upper right')
+    # plt.savefig("minimax.png")
     # hostel: vivek,kushal,aabid,
-    agents = ["vivek", "kushal", "aabid"]
+    print("-------------------------new instance-------------------------")
+    agents = ["sourav","vishal"]
     print("agents are: ",agents)
-    valuations = [[4000, 3200, 2800],[4000,4000,2000],[5000,3500,1500]]
+    valuations = [[4000,6000],[6000, 4000]]
+    print("*instance*",len(agents)-1)
     print("the valuations are:")
     for i in range(len(valuations)):
         print("Agent "+str(i+1)+": "+str(valuations[i]))
@@ -387,31 +424,35 @@ def main():
     instance = RentDivisionInstance(valuations=valuations, price=price)
 
     # Envy-free allocation
-    allocation = EnvyFree.solve(instance=instance)
+    # allocation = EnvyFree.solve(instance=instance)
     # print("Envy-free allocation :")
-    print("Allocation 1:")
-    print(allocation)
+    # print("Allocation 1:")
+    # print(allocation)
     # print(allocation.get_utilities())
 
     allocation = Maximin.solve(instance=instance)
     # print("Maximin allocation :")
-    print("Allocation 2:")
+    print("Allocation 1:")
     print(allocation)
     # print(allocation.get_utilities())
 
     # allocation = Maxislack.solve(instance=instance)
-    # # print("Maxislack allocation :")
+    # print("Maxislack allocation :")
     # print("Allocation 3:")
     # print(allocation)
     # print(allocation.get_utilities())
 
     allocation = Lexislack.solve(instance=instance)
     # print("Lexislack allocation :")
-    print("Allocation 3:")
+    print("Allocation 2:")
     print(allocation)
     # print(allocation.get_utilities())
 
-
+    allocation = Minimax.solve(instance=instance)
+    # print("Minimax allocation :")
+    print("Allocation 3:")
+    print(allocation)
+    # print(allocation.get_utilities())
 
 
 
